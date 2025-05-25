@@ -1,35 +1,39 @@
 package com.example.registrationBot.bot.handlers;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import com.example.registrationBot.bot.BookingContext;
 import com.example.registrationBot.bot.Controller;
+import com.example.registrationBot.bot.UserBot;
 import com.example.registrationBot.bot.UserResponseHandler;
 import com.example.registrationBot.bot.UserState;
+import com.example.registrationBot.utils.KeyboardUtil;
 
 @Component
 public class ChooseTimeHandler implements UserResponseHandler {
-
-    @Autowired
-    @Lazy
+	
+	@Autowired
     private Controller controller;
-
+	
     @Override
-    public void handle(String message, BookingContext context) {
+    public void handle(String message, BookingContext context, UserBot userBot) {
         Long adminId = context.getAdminId();
         Long chatId = context.getChatId();
         String serviceName = context.getServiceName();
 
         if (!controller.doesTimesExist(adminId, serviceName)) {
-            controller.sendMessage(chatId, "Пожалуйста, выберите время из списка:");
-            controller.sendAllTimesOfServicesToUser(adminId, chatId, serviceName);
-            return;
+            userBot.sendMessage(chatId, "Пожалуйста, выберите время из списка:");
+            List<String> times = controller.findAllTimesOfServicesForUser(adminId, chatId, message);
+            InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(times);
+            userBot.sendMessage(chatId, "Время: ", keyboard);            return;
         }
 
         context.setTime(message);
-        controller.checkInformation(chatId, serviceName, message);
+        userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime() + " Все верно?");
         context.setState(UserState.CONFIRMATION);
     }
 

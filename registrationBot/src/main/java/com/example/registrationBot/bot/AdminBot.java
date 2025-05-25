@@ -1,4 +1,8 @@
 package com.example.registrationBot.bot;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -6,27 +10,26 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 @Component
 public class AdminBot extends TelegramLongPollingBot {
 
-    private final Controller controller;
     private final Map<Long, ServiceCreationState> serviceCreationStates = new HashMap<>();
 
     private final String botUsername;
     private final String botToken;
+    
+    @Autowired
+    private Controller controller;
 
-    public AdminBot(Controller controller,
-                    @Value("${admin.botUsername}") String botUsername,
+    public AdminBot(@Value("${admin.botUsername}") String botUsername,
                     @Value("${admin.botToken}") String botToken) {
-        this.controller = controller;
         this.botUsername = botUsername;
         this.botToken = botToken;
     }
+
     @Override
     public String getBotUsername() {
         return botUsername;
@@ -36,6 +39,7 @@ public class AdminBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return botToken;
     }
+
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasCallbackQuery()) {
@@ -48,8 +52,14 @@ public class AdminBot extends TelegramLongPollingBot {
                     serviceCreationStates.put(chatId, new ServiceCreationState());
                     sendMessage(chatId, "Введите название новой услуги:");
                 }
-                case "view_services" -> controller.handleViewAllServices(chatId);
-                case "view_bookings" -> controller.handleViewAllBookings(chatId);
+                case "view_services" -> {
+                    String text = controller.handleViewAllServices(chatId);
+                    sendMessage(chatId, text);
+                }
+                case "view_bookings" -> {
+                    String text = controller.handleViewAllBookings(chatId);
+                    sendMessage(chatId, text);
+                }
                 case "test_client" -> sendClientTestLink(chatId, userId);
                 default -> sendAdminOptions(chatId);
             }
@@ -67,7 +77,6 @@ public class AdminBot extends TelegramLongPollingBot {
             return;
         }
 
-        // Обработка пошагового добавления услуги
         if (serviceCreationStates.containsKey(chatId)) {
             ServiceCreationState state = serviceCreationStates.get(chatId);
             if (!state.isNameSet()) {
@@ -137,7 +146,7 @@ public class AdminBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(Long chatId, String text) {
+    public void sendMessage(Long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
@@ -149,21 +158,10 @@ public class AdminBot extends TelegramLongPollingBot {
         }
     }
 
-
-
     private static class ServiceCreationState {
         private String name;
-
-        public boolean isNameSet() {
-            return name != null;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
+        public boolean isNameSet() { return name != null; }
+        public void setName(String name) { this.name = name; }
+        public String getName() { return name; }
     }
 }

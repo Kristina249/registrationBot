@@ -1,23 +1,23 @@
 package com.example.registrationBot.bot.handlers;
 
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import com.example.registrationBot.bot.BookingContext;
 import com.example.registrationBot.bot.Controller;
+import com.example.registrationBot.bot.UserBot;
 import com.example.registrationBot.bot.UserResponseHandler;
 import com.example.registrationBot.bot.UserState;
 
 @Component
 public class ConfirmationHandler implements UserResponseHandler {
 
-    @Autowired
-    @Lazy
+	@Autowired
     private Controller controller;
 
     @Override
-    public void handle(String message, BookingContext context) {
+    public void handle(String message, BookingContext context, UserBot userBot) {
         Long chatId = context.getChatId();
         Long adminId = context.getAdminId();
         String serviceName = context.getServiceName();
@@ -26,13 +26,13 @@ public class ConfirmationHandler implements UserResponseHandler {
         String userMessage = message.trim().toLowerCase();
 
         if (!userMessage.equals("да") && !userMessage.equals("нет")) {
-            controller.sendMessage(chatId, "Пожалуйста, ответьте 'да' или 'нет'");
-            controller.checkInformation(chatId, serviceName, time);
+            userBot.sendMessage(chatId, "Пожалуйста, ответьте 'да' или 'нет'");
+            userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime());
             return;
         }
 
         if (userMessage.equals("нет")) {
-            controller.sendMessage(chatId, "Запись удалена.");
+            userBot.sendMessage(chatId, "Запись удалена.");
             context.setState(UserState.DONE);
             return;
         }
@@ -40,6 +40,7 @@ public class ConfirmationHandler implements UserResponseHandler {
         // Ответ "да"
         controller.addBooking(chatId, serviceName, time, adminId);
         context.setState(UserState.DONE);
+        userBot.sendMessage(chatId, "Записались");
     }
 
     @Override

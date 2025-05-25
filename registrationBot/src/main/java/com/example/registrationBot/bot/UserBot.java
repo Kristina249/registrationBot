@@ -57,7 +57,7 @@ public class UserBot extends TelegramLongPollingBot {
 
                 UserResponseHandler handler = handlers.get(UserState.START);
                 if (handler != null) {
-                    handler.handle(text, context);
+                    handler.handle(text, context, this);
                 } else {
                     sendMessage(chatId, "Извините, бот временно недоступен.");
                 }
@@ -82,7 +82,7 @@ public class UserBot extends TelegramLongPollingBot {
         UserResponseHandler handler = handlers.get(state);
 
         if (handler != null) {
-            handler.handle(text, context);
+            handler.handle(text, context, this);
         } else {
             sendMessage(chatId, "Извините, я не понимаю ваш запрос.");
         }

@@ -3,39 +3,27 @@ package com.example.registrationBot.bot;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import com.example.registrationBot.entities.Booking;
 import com.example.registrationBot.entities.ServiceSlot;
 import com.example.registrationBot.services.BookingService;
 import com.example.registrationBot.services.ServiceSlotService;
-import com.example.registrationBot.utils.KeyboardUtil;
 
 @Service
 public class Controller {
 
-    private final ServiceSlotService serviceSlotService;
-    private final BookingService bookingService;
-    private final UserBot userBot;
+    @Autowired
+    private ServiceSlotService serviceSlotService;
 
-    public Controller(ServiceSlotService serviceSlotService,
-                      BookingService bookingService,
-                      UserBot userBot) {
-        this.serviceSlotService = serviceSlotService;
-        this.bookingService = bookingService;
-        this.userBot = userBot;
-    }
+    @Autowired
+    private BookingService bookingService;
 
-    public void sendMessage(long chatId, String message) {
-        userBot.sendMessage(chatId, message);
-    }
-
-    public void handleViewAllBookings(long adminTelegramId) {
+    public String handleViewAllBookings(long adminTelegramId) {
         List<Booking> bookings = bookingService.getAllBookingsByAdminTelegramId(adminTelegramId);
         if (bookings.isEmpty()) {
-            userBot.sendMessage(adminTelegramId, "Нет записей.");
-            return;
+            return "Нет записей.";
         }
         StringBuilder sb = new StringBuilder();
         for (Booking booking : bookings) {
@@ -44,14 +32,13 @@ public class Controller {
               .append(booking.getTime())
               .append("\n");
         }
-        userBot.sendMessage(adminTelegramId, sb.toString());
+        return sb.toString();
     }
 
-    public void handleViewAllServices(long adminTelegramId) {
+    public String handleViewAllServices(long adminTelegramId) {
         List<ServiceSlot> slots = serviceSlotService.getServiceSlotsByAdminTelegramId(adminTelegramId);
         if (slots.isEmpty()) {
-            userBot.sendMessage(adminTelegramId, "Список услуг пуст.");
-            return;
+            return "Список услуг пуст.";
         }
         Map<String, List<ServiceSlot>> grouped = slots.stream()
                 .collect(Collectors.groupingBy(ServiceSlot::getName));
@@ -63,37 +50,28 @@ public class Controller {
                     .collect(Collectors.joining(", "));
             sb.append(times).append("\n");
         });
-        userBot.sendMessage(adminTelegramId, sb.toString());
+        return sb.toString();
     }
 
     public void handleAddService(long adminTelegramId, String name, String time) {
         serviceSlotService.createAndSaveServiceSlots(adminTelegramId, name, time);
     }
 
-    public void sendAllServicesToUser(long adminId, long chatId) {
+    public List<String> findAllServicesForUser(long adminId, long chatId) {
         List<ServiceSlot> slots = serviceSlotService.getServiceSlotsByAdminTelegramId(adminId);
-        List<String> uniqueNames = slots.stream()
+        return slots.stream()
                 .map(ServiceSlot::getName)
                 .distinct()
                 .collect(Collectors.toList());
-        InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(uniqueNames);
-        userBot.sendMessage(chatId, "Услуги:", keyboard);
     }
 
-    public void sendAllTimesOfServicesToUser(long adminId, long chatId, String serviceName) {
+    public List<String> findAllTimesOfServicesForUser(long adminId, long chatId, String serviceName) {
         List<ServiceSlot> slots = serviceSlotService.getServiceSlotsByAdminTelegramId(adminId);
-        List<String> times = slots.stream()
+        return slots.stream()
                 .filter(s -> s.getName().equals(serviceName))
                 .map(ServiceSlot::getTime)
                 .distinct()
                 .collect(Collectors.toList());
-        InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(times);
-        userBot.sendMessage(chatId, "Время:", keyboard);
-    }
-
-    public void checkInformation(long chatId, String serviceName, String time) {
-        userBot.sendMessage(chatId,
-                String.format("Услуга: %s Время: %s. Напиши да/нет", serviceName, time));
     }
 
     public boolean doesServicesExist(long adminId) {
@@ -107,6 +85,5 @@ public class Controller {
 
     public void addBooking(long userTelegramId, String serviceName, String time, long adminTelegramId) {
         bookingService.createBooking(userTelegramId, serviceName, time, adminTelegramId);
-        userBot.sendMessage(userTelegramId, "Запись успешно добавлена.");
     }
 }
