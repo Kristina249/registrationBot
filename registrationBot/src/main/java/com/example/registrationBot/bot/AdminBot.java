@@ -17,16 +17,25 @@ public class AdminBot extends TelegramLongPollingBot {
     private final Controller controller;
     private final Map<Long, ServiceCreationState> serviceCreationStates = new HashMap<>();
 
-    @Value("${admin.botUsername}")
-    private String botUsername;
+    private final String botUsername;
+    private final String botToken;
 
-    @Value("${admin.botToken}")
-    private String botToken;
-
-    public AdminBot(Controller controller) {
+    public AdminBot(Controller controller,
+                    @Value("${admin.botUsername}") String botUsername,
+                    @Value("${admin.botToken}") String botToken) {
         this.controller = controller;
+        this.botUsername = botUsername;
+        this.botToken = botToken;
+    }
+    @Override
+    public String getBotUsername() {
+        return botUsername;
     }
 
+    @Override
+    public String getBotToken() {
+        return botToken;
+    }
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasCallbackQuery()) {
@@ -140,15 +149,7 @@ public class AdminBot extends TelegramLongPollingBot {
         }
     }
 
-    @Override
-    public String getBotUsername() {
-        return botUsername;
-    }
 
-    @Override
-    public String getBotToken() {
-        return botToken;
-    }
 
     private static class ServiceCreationState {
         private String name;

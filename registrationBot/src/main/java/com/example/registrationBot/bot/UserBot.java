@@ -1,7 +1,8 @@
 package com.example.registrationBot.bot;
 
+import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,8 @@ public class UserBot extends TelegramLongPollingBot {
     private final String botToken;
     private final Map<UserState, UserResponseHandler> handlers;
     private final Map<Long, BookingContext> userContexts = new ConcurrentHashMap<>();
+    private final Map<Long, Instant> contextTimestamps = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService cleaner = Executors.newSingleThreadScheduledExecutor();
 
     public UserBot(
         @Value("${user.botUsername}") String botUsername,
@@ -29,34 +32,80 @@ public class UserBot extends TelegramLongPollingBot {
         this.botUsername = botUsername;
         this.botToken = botToken;
         this.handlers = handlers;
+
+        cleaner.scheduleAtFixedRate(this::cleanOldContexts, 1, 1, TimeUnit.MINUTES);
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-        Long chatId = update.getMessage().getChatId();
-        String text = update.getMessage().getText();
-
-        BookingContext context = userContexts.computeIfAbsent(chatId, BookingContext::new);
-
-        // Если команда /start с параметром
-        if (text.startsWith("/start")) {
-            handlers.get(UserState.START).handle(text, context);
+        if (!update.hasMessage() || !update.getMessage().hasText()) {
+            // Игнорируем не текстовые сообщения
             return;
         }
 
-        // Определяем текущее состояние и вызываем соответствующий handler
+        Long chatId = update.getMessage().getChatId();
+        String text = update.getMessage().getText();
+
+        BookingContext context = userContexts.get(chatId);
+
+        // Если сессии нет и пришла команда /start — создаём новую сессию и запускаем обработчик
+        if (context == null) {
+            if (text.startsWith("/start")) {
+                context = new BookingContext(chatId);
+                userContexts.put(chatId, context);
+                contextTimestamps.put(chatId, Instant.now());
+
+                UserResponseHandler handler = handlers.get(UserState.START);
+                if (handler != null) {
+                    handler.handle(text, context);
+                } else {
+                    sendMessage(chatId, "Извините, бот временно недоступен.");
+                }
+                return;
+            } else {
+                sendMessage(chatId, "Ваша сессия устарела. Напишите /start, чтобы начать заново.");
+                return;
+            }
+        }
+
+        // Если сессия есть, обновляем таймстамп
+        contextTimestamps.put(chatId, Instant.now());
+
+        // Если пользователь завершил сессию, создаём новую
+        if (context.getState() == UserState.DONE) {
+            userContexts.remove(chatId);
+            context = new BookingContext(chatId);
+            userContexts.put(chatId, context);
+        }
+
         UserState state = context.getState();
         UserResponseHandler handler = handlers.get(state);
-        handler.handle(text, context);
+
+        if (handler != null) {
+            handler.handle(text, context);
+        } else {
+            sendMessage(chatId, "Извините, я не понимаю ваш запрос.");
+        }
     }
-    
+
+    private void cleanOldContexts() {
+        Instant now = Instant.now();
+        for (Map.Entry<Long, Instant> entry : contextTimestamps.entrySet()) {
+            if (now.minusSeconds(600).isAfter(entry.getValue())) { // 10 минут
+                Long chatId = entry.getKey();
+                userContexts.remove(chatId);
+                contextTimestamps.remove(chatId);
+            }
+        }
+    }
+
     public void sendMessage(Long chatId, String text, InlineKeyboardMarkup keyboard) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
 
         if (keyboard != null) {
-            message.setReplyMarkup(keyboard); // прикрепляем клавиатуру
+            message.setReplyMarkup(keyboard);
         }
 
         try {
@@ -65,13 +114,10 @@ public class UserBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-    
+
     public void sendMessage(Long chatId, String text) {
-        sendMessage(chatId, text, null); // вызывает второй метод
+        sendMessage(chatId, text, null);
     }
-
-
-
 
     @Override
     public String getBotUsername() {

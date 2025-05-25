@@ -20,7 +20,7 @@ public class BookingContext {
         this.adminId = adminId;
     }
 
-    public Long getUserId() {
+    public Long getChatId() {
         return chatId;
     }
 
