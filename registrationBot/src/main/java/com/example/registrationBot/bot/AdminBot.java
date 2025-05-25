@@ -20,14 +20,18 @@ public class AdminBot extends TelegramLongPollingBot {
 
     private final String botUsername;
     private final String botToken;
-    
+    private final String userBotUsername;
+
     @Autowired
     private Controller controller;
 
-    public AdminBot(@Value("${admin.botUsername}") String botUsername,
-                    @Value("${admin.botToken}") String botToken) {
-        this.botUsername = botUsername;
-        this.botToken = botToken;
+    public AdminBot(
+            @Value("${admin.botUsername}") String botUsername,
+            @Value("${admin.botToken}") String botToken,
+            @Value("${user.botUsername}")  String userBotUsername) {
+        this.botUsername    = botUsername;
+        this.botToken       = botToken;
+        this.userBotUsername = userBotUsername;
     }
 
     @Override
@@ -52,14 +56,8 @@ public class AdminBot extends TelegramLongPollingBot {
                     serviceCreationStates.put(chatId, new ServiceCreationState());
                     sendMessage(chatId, "Введите название новой услуги:");
                 }
-                case "view_services" -> {
-                    String text = controller.handleViewAllServices(chatId);
-                    sendMessage(chatId, text);
-                }
-                case "view_bookings" -> {
-                    String text = controller.handleViewAllBookings(chatId);
-                    sendMessage(chatId, text);
-                }
+                case "view_services" -> sendMessage(chatId, controller.handleViewAllServices(chatId));
+                case "view_bookings" -> sendMessage(chatId, controller.handleViewAllBookings(chatId));
                 case "test_client" -> sendClientTestLink(chatId, userId);
                 default -> sendAdminOptions(chatId);
             }
@@ -83,9 +81,7 @@ public class AdminBot extends TelegramLongPollingBot {
                 state.setName(text);
                 sendMessage(chatId, "Теперь введите время для этой услуги:");
             } else {
-                String name = state.getName();
-                String time = text;
-                controller.handleAddService(chatId, name, time);
+                controller.handleAddService(chatId, state.getName(), text);
                 serviceCreationStates.remove(chatId);
                 sendMessage(chatId, "Услуга успешно добавлена.");
                 sendAdminOptions(chatId);
@@ -103,25 +99,30 @@ public class AdminBot extends TelegramLongPollingBot {
         InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
 
-        rows.add(List.of(InlineKeyboardButton.builder()
-                .text("\u2795 Добавить новую услугу")
+        rows.add(List.of(
+            InlineKeyboardButton.builder()
+                .text("➕ Добавить новую услугу")
                 .callbackData("add_service")
-                .build()));
-
-        rows.add(List.of(InlineKeyboardButton.builder()
-                .text("\uD83D\uDCCB Просмотреть все услуги")
+                .build()
+        ));
+        rows.add(List.of(
+            InlineKeyboardButton.builder()
+                .text("📋 Просмотреть все услуги")
                 .callbackData("view_services")
-                .build()));
-
-        rows.add(List.of(InlineKeyboardButton.builder()
-                .text("\uD83D\uDCC6 Просмотреть все записи")
+                .build()
+        ));
+        rows.add(List.of(
+            InlineKeyboardButton.builder()
+                .text("📆 Просмотреть все записи")
                 .callbackData("view_bookings")
-                .build()));
-
-        rows.add(List.of(InlineKeyboardButton.builder()
-                .text("\uD83E\uDDEA Протестировать как клиент")
+                .build()
+        ));
+        rows.add(List.of(
+            InlineKeyboardButton.builder()
+                .text("🤖 Протестировать как клиент")
                 .callbackData("test_client")
-                .build()));
+                .build()
+        ));
 
         inlineKeyboard.setKeyboard(rows);
         message.setReplyMarkup(inlineKeyboard);
@@ -134,10 +135,18 @@ public class AdminBot extends TelegramLongPollingBot {
     }
 
     private void sendClientTestLink(Long chatId, Long adminUserId) {
-        String link = "https://t.me/" + botUsername + "?start=admin_" + adminUserId;
+        String link = "https://t.me/" + userBotUsername + "?start=admin_" + adminUserId;
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
-        message.setText("Откройте бота как клиент: " + link);
+        message.setText("Откройте бота как клиент:");
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        InlineKeyboardButton button = InlineKeyboardButton.builder()
+            .text("Запустить клиент-бота")
+            .url(link)
+            .build();
+        markup.setKeyboard(List.of(List.of(button)));
+        message.setReplyMarkup(markup);
 
         try {
             execute(message);
@@ -150,7 +159,6 @@ public class AdminBot extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
-
         try {
             execute(message);
         } catch (TelegramApiException e) {
