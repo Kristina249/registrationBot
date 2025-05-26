@@ -42,8 +42,12 @@ public class UserBot extends TelegramLongPollingBot {
     	 Message message = update.getMessage();
          String text = message.getText();
          Long chatId = message.getChatId();
-         System.out.println("Апдейт");
-         sendMessage(chatId, text);
+         if (text.startsWith("/start")) {
+        	 BookingContext user = new BookingContext(chatId);
+        	 userContexts.put(chatId, user);
+        	 UserResponseHandler handler = handlers.get(user.getState());
+        	 handler.handle(text, user, this);
+         }
 		/*
 		 * System.out.println("Апдейт"); Long chatId = update.getMessage().getChatId();
 		 * String text = update.getMessage().getText();
