@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -38,54 +39,45 @@ public class UserBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
-            // Игнорируем не текстовые сообщения
-            return;
-        }
-
-        Long chatId = update.getMessage().getChatId();
-        String text = update.getMessage().getText();
-
-        BookingContext context = userContexts.get(chatId);
-
-        // Если сессии нет и пришла команда /start — создаём новую сессию и запускаем обработчик
-        if (context == null) {
-            if (text.startsWith("/start")) {
-                context = new BookingContext(chatId);
-                userContexts.put(chatId, context);
-                contextTimestamps.put(chatId, Instant.now());
-
-                UserResponseHandler handler = handlers.get(UserState.START);
-                if (handler != null) {
-                    handler.handle(text, context, this);
-                } else {
-                    sendMessage(chatId, "Извините, бот временно недоступен.");
-                }
-                return;
-            } else {
-                sendMessage(chatId, "Ваша сессия устарела. Напишите /start, чтобы начать заново.");
-                return;
-            }
-        }
-
-        // Если сессия есть, обновляем таймстамп
-        contextTimestamps.put(chatId, Instant.now());
-
-        // Если пользователь завершил сессию, создаём новую
-        if (context.getState() == UserState.DONE) {
-            userContexts.remove(chatId);
-            context = new BookingContext(chatId);
-            userContexts.put(chatId, context);
-        }
-
-        UserState state = context.getState();
-        UserResponseHandler handler = handlers.get(state);
-
-        if (handler != null) {
-            handler.handle(text, context, this);
-        } else {
-            sendMessage(chatId, "Извините, я не понимаю ваш запрос.");
-        }
+    	 Message message = update.getMessage();
+         String text = message.getText();
+         Long chatId = message.getChatId();
+         System.out.println("Апдейт");
+         sendMessage(chatId, text);
+		/*
+		 * System.out.println("Апдейт"); Long chatId = update.getMessage().getChatId();
+		 * String text = update.getMessage().getText();
+		 * 
+		 * BookingContext context = userContexts.get(chatId); if
+		 * (update.hasCallbackQuery()) { UserState state = context.getState();
+		 * UserResponseHandler handler = handlers.get(state);
+		 * 
+		 * if (handler != null) { handler.handle(text, context, this); } } if
+		 * (!update.hasMessage() || !update.getMessage().hasText()) { // Игнорируем не
+		 * текстовые сообщения return; }
+		 * 
+		 * 
+		 * 
+		 * // Если сессии нет и пришла команда /start — создаём новую сессию и запускаем
+		 * обработчик if (context == null) { System.out.println("Все нормально");
+		 * 
+		 * if (text.startsWith("/start")) { context = new BookingContext(chatId);
+		 * userContexts.put(chatId, context); contextTimestamps.put(chatId,
+		 * Instant.now());
+		 * 
+		 * UserResponseHandler handler = handlers.get(UserState.START); if (handler !=
+		 * null) { handler.handle(text, context, this); } else { sendMessage(chatId,
+		 * "Извините, бот временно недоступен."); } return; } else { sendMessage(chatId,
+		 * "Ваша сессия устарела. Напишите /start, чтобы начать заново."); return; } }
+		 * 
+		 * // Если сессия есть, обновляем таймстамп contextTimestamps.put(chatId,
+		 * Instant.now());
+		 * 
+		 * // Если пользователь завершил сессию, создаём новую if (context.getState() ==
+		 * UserState.DONE) { userContexts.remove(chatId); context = new
+		 * BookingContext(chatId); userContexts.put(chatId, context); }
+		 */
+       
     }
 
     private void cleanOldContexts() {
