@@ -33,7 +33,8 @@ public class ChooseTimeHandler implements UserResponseHandler {
         }
 
         context.setTime(message);
-        userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime() + " Все верно?");
+        InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(List.of("Да, все верно", "Нет, отменить запись"));
+        userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime() + " Все верно?", keyboard);
         context.setState(UserState.CONFIRMATION);
     }
 
