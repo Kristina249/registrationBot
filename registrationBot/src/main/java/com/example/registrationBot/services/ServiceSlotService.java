@@ -39,4 +39,18 @@ public class ServiceSlotService {
     public List<ServiceSlot> getServiceSlotsByAdminTelegramId(Long telegramId) {
         return serviceSlotRepository.findAllByAdmin_TelegramId(telegramId);
     }
+    
+    @Transactional
+    public void deleteServiceSlotById(int id) {
+        serviceSlotRepository.deleteById(id);
+    }
+    @Transactional(readOnly = true)
+    public Integer findServiceSlotId(String name, String time, Long adminTelegramId) {
+        return adminRepository.findByTelegramId(adminTelegramId)
+                .flatMap(admin -> serviceSlotRepository.findByNameAndTimeAndAdmin(name, time, admin))
+                .map(ServiceSlot::getId)
+                .orElse(null);
+    }
+
+
 }

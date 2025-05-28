@@ -86,4 +86,28 @@ public class Controller {
     public void addBooking(long userTelegramId, String serviceName, String time, long adminTelegramId) {
         bookingService.createBooking(userTelegramId, serviceName, time, adminTelegramId);
     }
+    public Long getAdminIdFromAdminClient(long clientId) {
+    	Long adminId = bookingService.getAdminIdByClientId(clientId);
+    	if (adminId == null) {
+    		return null;
+    	} else {
+    		return adminId;
+    	}
+    }
+  
+    public void addClientAdmin(Long clientId, Long adminId) {
+    	bookingService.saveClientAdmin(clientId, adminId);
+    }
+    
+    public void deleteServiceSlot(int id) {
+    	serviceSlotService.deleteServiceSlotById(id);
+    }
+    public Integer findIdOfServiceSlot(String name, String time, Long adminTelegramId) {
+    	if (serviceSlotService.findServiceSlotId(name, time, adminTelegramId) == null) {
+    		return 0;
+    	} else {
+    		return serviceSlotService.findServiceSlotId(name, time, adminTelegramId);
+    	}
+    	
+    }
 }

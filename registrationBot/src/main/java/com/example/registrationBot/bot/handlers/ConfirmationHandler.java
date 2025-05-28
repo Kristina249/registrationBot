@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
+import com.example.registrationBot.bot.AdminBot;
 import com.example.registrationBot.bot.BookingContext;
 import com.example.registrationBot.bot.Controller;
 import com.example.registrationBot.bot.UserBot;
@@ -19,10 +20,12 @@ public class ConfirmationHandler implements UserResponseHandler {
 
 	@Autowired
     private Controller controller;
+	
+    @Autowired
+    private AdminBot adminBot;   
 
     @Override
     public void handle(String message, BookingContext context, UserBot userBot) {
-    	System.out.println("Последний этап");
         Long chatId = context.getChatId();
         Long adminId = context.getAdminId();
         String serviceName = context.getServiceName();
@@ -36,19 +39,25 @@ public class ConfirmationHandler implements UserResponseHandler {
             userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime() + " Все верно?", keyboard);            return;
         }
 
-        if (userMessage.equals("Нет, отменить запись")) {
+        if (userMessage.equals("нет, отменить запись")) {
             userBot.sendMessage(chatId, "Запись удалена.");
             context.setState(UserState.DONE);
             return;
         }
-    	System.out.println("Пока все нормально");
 
         // Ответ "да"
-        controller.addBooking(chatId, serviceName, time, adminId);
-    	System.out.println("Добавилась запись");
-        context.setState(UserState.DONE);
-        userBot.sendMessage(chatId, "Записались");
-        
+        Integer id = controller.findIdOfServiceSlot(serviceName, time, adminId);
+        if (id != null) {
+            controller.addBooking(chatId, serviceName, time, adminId);
+            controller.deleteServiceSlot(id);
+            context.setState(UserState.DONE);
+            userBot.sendMessage(chatId, "Записались");
+            adminBot.sendMessage(context.getAdminId(), "Новая запись: " + context.getServiceName() + " на " + context.getTime());
+        } else {
+        	userBot.sendMessage(chatId, "Запись не найдена");
+        	return;
+        }
+ 
     }
 
     @Override

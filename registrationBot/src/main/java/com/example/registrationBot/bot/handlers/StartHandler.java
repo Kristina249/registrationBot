@@ -22,7 +22,13 @@ public class StartHandler implements UserResponseHandler {
    
     @Override
     public void handle(String message, BookingContext context, UserBot userBot) {
-    	long adminId = AdminIdExtractor.extractAdminIdFromStartCommand(message);
+    	long adminId;
+    	if (controller.getAdminIdFromAdminClient(context.getChatId()) == null) {
+        	adminId = AdminIdExtractor.extractAdminIdFromStartCommand(message);
+    		controller.addClientAdmin(context.getChatId(), adminId);
+    	} else {
+    		adminId = controller.getAdminIdFromAdminClient(context.getChatId());
+    	}
     	if (!controller.doesServicesExist(adminId)) {
     		userBot.sendMessage(context.getChatId(), "Нету");
     		return;

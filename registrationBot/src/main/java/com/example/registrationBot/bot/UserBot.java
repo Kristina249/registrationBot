@@ -40,9 +40,15 @@ public class UserBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
     	 if (update.hasCallbackQuery()) {
-        	 System.out.println("CallBackQuerry");
         	 String data = update.getCallbackQuery().getData();
              Long chatIdQuery = update.getCallbackQuery().getMessage().getChatId();
+    		 if (!(userContexts.containsKey(chatIdQuery))) {
+    			 sendMessage(chatIdQuery, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
+    			 return;
+    		 }
+    		 if (userContexts.get(chatIdQuery).getState() == UserState.DONE) {
+    			 sendMessage(chatIdQuery, "Если хотите записать еще раз, нажмите /start");
+    		 }
         	 BookingContext user = userContexts.get(chatIdQuery);
         	 UserResponseHandler handler = handlers.get(user.getState());
         	 handler.handle(data, user, this);
@@ -52,16 +58,29 @@ public class UserBot extends TelegramLongPollingBot {
          String text = message.getText();
          Long chatId = message.getChatId();
          if (text.startsWith("/start")) {
-        	 BookingContext user = new BookingContext(chatId);
-        	 userContexts.put(chatId, user);
-        	 UserResponseHandler handler = handlers.get(user.getState());
-        	 handler.handle(text, user, this);
+        	 sendStartMessage(chatId, text);
+        	 return;
          }
-        
+         if (userContexts.containsKey(chatId) && !(userContexts.get(chatId).getState() == UserState.DONE)) {
+        	 sendMessage(chatId, "Пожалуйста выберите вариант из списка");
+        	 return;
+         }
+        if (!userContexts.containsKey(chatId)) {
+        	sendMessage(chatId, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
+        	return;
+        }
+        if (userContexts.get(chatId).getState() == UserState.DONE) {
+        	sendStartMessage(chatId, text);
+        }
          if (!update.hasMessage() || !update.getMessage().hasText()) return;
        
     }
-
+    private void sendStartMessage(long chatId, String text) {
+    	 BookingContext user = new BookingContext(chatId);
+    	 userContexts.put(chatId, user);
+    	 UserResponseHandler handler = handlers.get(user.getState());
+    	 handler.handle(text, user, this);
+    }
     private void cleanOldContexts() {
         Instant now = Instant.now();
         for (Map.Entry<Long, Instant> entry : contextTimestamps.entrySet()) {
