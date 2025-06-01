@@ -9,14 +9,12 @@ public class BookingMapper {
     public static Booking createBooking(Long userTelegramId,
                                         String serviceName,
                                         String serviceTime,
-                                        Admin admin,
-                                        ServiceSlot serviceSlot) {
+                                        Admin admin) {
         Booking booking = new Booking();
-        booking.setTelegramId(userTelegramId);
+        booking.setUserId(userTelegramId);
         booking.setName(serviceName);
         booking.setTime(serviceTime);
         booking.setAdmin(admin);
-        booking.setServiceSlot(serviceSlot);
         return booking;
     }
 }

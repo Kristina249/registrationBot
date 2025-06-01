@@ -37,19 +37,13 @@ public class BookingService {
                               Long adminTelegramId) {
         Admin admin = adminRepository.findByTelegramId(adminTelegramId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin not found"));
-        ServiceSlot slot = serviceSlotRepository
-                .findAllByAdmin_TelegramId(adminTelegramId)
-                .stream()
-                .filter(s -> s.getName().equals(serviceName) && s.getTime().equals(serviceTime))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("ServiceSlot not found"));
-
-        Booking booking = BookingMapper.createBooking(userTelegramId, serviceName, serviceTime, admin, slot);
+        Booking booking = BookingMapper.createBooking(userTelegramId, serviceName, serviceTime, admin);
+        System.out.println(booking);
         bookingRepository.save(booking);
     }
 
     public List<Booking> getAllBookingsByAdminTelegramId(Long telegramId) {
-        return bookingRepository.findAllByAdmin_TelegramId(telegramId);
+        return bookingRepository.findAllByUserId(telegramId);
     }
     
     public Long getAdminIdByClientId(Long clientId) {
