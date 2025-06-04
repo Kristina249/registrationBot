@@ -17,7 +17,6 @@ import java.util.*;
 public class AdminBot extends TelegramLongPollingBot {
 
     private final Map<Long, ServiceCreationState> serviceCreationStates = new HashMap<>();
-
     private final String botUsername;
     private final String botToken;
     private final String userBotUsername;
@@ -54,7 +53,9 @@ public class AdminBot extends TelegramLongPollingBot {
             switch (data) {
                 case "add_service" -> {
                     serviceCreationStates.put(chatId, new ServiceCreationState());
-                    sendMessage(chatId, "Введите название новой услуги:");
+                    sendMessage(chatId,
+                        "📝 Пожалуйста, введите название услуги, которую хотите добавить (демо).\n" +
+                        "Например: Массаж, Стрижка, Консультация");
                 }
                 case "view_services" -> sendMessage(chatId, controller.handleViewAllServices(chatId));
                 case "view_bookings" -> sendMessage(chatId, controller.handleViewAllBookings(chatId));
@@ -71,6 +72,7 @@ public class AdminBot extends TelegramLongPollingBot {
         Long chatId = message.getChatId();
 
         if ("/start".equals(text)) {
+            // Приветствие через BotFather, код теперь сразу показывает меню
             sendAdminOptions(chatId);
             return;
         }
@@ -79,11 +81,13 @@ public class AdminBot extends TelegramLongPollingBot {
             ServiceCreationState state = serviceCreationStates.get(chatId);
             if (!state.isNameSet()) {
                 state.setName(text);
-                sendMessage(chatId, "Теперь введите время для этой услуги:");
+                sendMessage(chatId,
+                    "⏰ Теперь укажите доступное время для этой услуги через запятую.\n" +
+                    "Примеры: 10:00, 12:30, 15:00");
             } else {
                 controller.handleAddService(chatId, state.getName(), text);
                 serviceCreationStates.remove(chatId);
-                sendMessage(chatId, "Услуга успешно добавлена.");
+                sendMessage(chatId, "✅ Услуга успешно добавлена (демо).");
                 sendAdminOptions(chatId);
             }
         } else {
@@ -138,14 +142,15 @@ public class AdminBot extends TelegramLongPollingBot {
         String link = "https://t.me/" + userBotUsername + "?start=admin_" + adminUserId;
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
-        message.setText("Откройте бота как клиент:");
+        message.setText("Откройте бот как клиент (демо):");
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        InlineKeyboardButton button = InlineKeyboardButton.builder()
-            .text("Запустить клиент-бота")
-            .url(link)
-            .build();
-        markup.setKeyboard(List.of(List.of(button)));
+        markup.setKeyboard(List.of(List.of(
+            InlineKeyboardButton.builder()
+                .text("Запустить клиент-бота")
+                .url(link)
+                .build()
+        )));
         message.setReplyMarkup(markup);
 
         try {

@@ -16,25 +16,20 @@ import com.example.registrationBot.utils.KeyboardUtil;
 
 @Component
 public class ChooserServiceHandler implements UserResponseHandler {
-	 @Autowired
-	    private Controller controller;
+    @Autowired
+    private Controller controller;
 
     @Override
     public void handle(String message, BookingContext context, UserBot userBot) {
         Long adminId = context.getAdminId();
         Long chatId = context.getChatId();
-        if (!controller.doesServicesExist(adminId)) {
-        	userBot.sendMessage(chatId, "Пожалуйста, выберите услугу из списка ниже:");
-            List<String> services = controller.findAllServicesForUser(adminId, chatId);
-            InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(services);
-        	userBot.sendMessage(context.getChatId(), "Услуги: ", keyboard);
-            return;
-        }
 
         context.setServiceName(message);
         List<String> times = controller.findAllTimesOfServicesForUser(adminId, chatId, message);
         InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(times);
-        userBot.sendMessage(chatId, "Время: ", keyboard);
+        userBot.sendMessage(chatId,
+            "⏰ Отлично! Теперь выберите удобное время из доступных вариантов:", keyboard);
+
         context.setState(UserState.CHOOSE_TIME);
     }
 

@@ -17,47 +17,34 @@ import com.example.registrationBot.utils.KeyboardUtil;
 
 @Component
 public class ConfirmationHandler implements UserResponseHandler {
-
-	@Autowired
-    private Controller controller;
-	
     @Autowired
-    private AdminBot adminBot;   
+    private Controller controller;
+    @Autowired
+    private AdminBot adminBot;
 
     @Override
     public void handle(String message, BookingContext context, UserBot userBot) {
-        Long chatId = context.getChatId();
-        Long adminId = context.getAdminId();
-        String serviceName = context.getServiceName();
-        String time = context.getTime();
-
-        String userMessage = message.trim().toLowerCase();
-
-        if (!userMessage.equals("да, все верно") && !userMessage.equals("нет, отменить запись")) {
-            userBot.sendMessage(chatId, "Пожалуйста, ответьте 'да' или 'нет'");
-            InlineKeyboardMarkup keyboard = KeyboardUtil.createInlineKeyboard(List.of("Да, все верно", "Нет, отменить запись"));
-            userBot.sendMessage(chatId, "Услуга: " + context.getServiceName() + " Время: " + context.getTime() + " Все верно?", keyboard);            return;
-        }
-
-        if (userMessage.equals("нет, отменить запись")) {
-            userBot.sendMessage(chatId, "Запись удалена.");
+        String userMsg = message.trim().toLowerCase();
+        if (userMsg.equals("нет, отменить запись")) {
+            userBot.sendMessage(context.getChatId(),
+                "Запись удалена (прототип). Нажмите /start, чтобы начать заново.");
             context.setState(UserState.DONE);
             return;
         }
 
-        // Ответ "да"
-        Integer id = controller.findIdOfServiceSlot(serviceName, time, adminId);
-        if (id != null) {
-            controller.addBooking(chatId, serviceName, time, adminId);
-            controller.deleteServiceSlot(id);
-            context.setState(UserState.DONE);
-            userBot.sendMessage(chatId, "Записались");
-            adminBot.sendMessage(context.getAdminId(), "Новая запись: " + context.getServiceName() + " на " + context.getTime());
-        } else {
-        	userBot.sendMessage(chatId, "Запись не найдена");
-        	return;
-        }
- 
+        // "да, все верно"
+        controller.addBooking(context.getChatId(), context.getServiceName(), context.getTime(), context.getAdminId());
+        context.setState(UserState.DONE);
+        Integer adminId = controller.findIdOfServiceSlot(context.getServiceName(), context.getTime(), context.getAdminId());
+        controller.deleteServiceSlot(adminId);
+        userBot.sendMessage(context.getChatId(),
+            "🎉 Ваша тестовая запись успешно добавлена!\nСпасибо за использование демонстрационного бота.");
+
+        // уведомление админа
+        adminBot.sendMessage(context.getAdminId(),
+            String.format("Новая запись: %s на %s (демо)",
+                context.getServiceName(), context.getTime())
+        );
     }
 
     @Override

@@ -33,58 +33,64 @@ public class UserBot extends TelegramLongPollingBot {
         this.botUsername = botUsername;
         this.botToken = botToken;
         this.handlers = handlers;
-
         cleaner.scheduleAtFixedRate(this::cleanOldContexts, 1, 1, TimeUnit.MINUTES);
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-    	 if (update.hasCallbackQuery()) {
-        	 String data = update.getCallbackQuery().getData();
-             Long chatIdQuery = update.getCallbackQuery().getMessage().getChatId();
-    		 if (!(userContexts.containsKey(chatIdQuery))) {
-    			 sendMessage(chatIdQuery, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
-    			 return;
-    		 }
-    		 if (userContexts.get(chatIdQuery).getState() == UserState.DONE) {
-    			 sendMessage(chatIdQuery, "Если хотите записать еще раз, нажмите /start");
-    		 }
-        	 BookingContext user = userContexts.get(chatIdQuery);
-        	 UserResponseHandler handler = handlers.get(user.getState());
-        	 handler.handle(data, user, this);
-        	 return;
-         }
-    	 Message message = update.getMessage();
-         String text = message.getText();
-         Long chatId = message.getChatId();
-         if (text.startsWith("/start")) {
-        	 sendStartMessage(chatId, text);
-        	 return;
-         }
-         if (userContexts.containsKey(chatId) && !(userContexts.get(chatId).getState() == UserState.DONE)) {
-        	 sendMessage(chatId, "Пожалуйста выберите вариант из списка");
-        	 return;
-         }
+        if (update.hasCallbackQuery()) {
+            String data = update.getCallbackQuery().getData();
+            Long chatIdQuery = update.getCallbackQuery().getMessage().getChatId();
+            if (!userContexts.containsKey(chatIdQuery)) {
+                sendMessage(chatIdQuery, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
+                return;
+            }
+            if (userContexts.get(chatIdQuery).getState() == UserState.DONE) {
+                sendMessage(chatIdQuery, "Если хотите записать еще раз, нажмите /start");
+            }
+            BookingContext user = userContexts.get(chatIdQuery);
+            UserResponseHandler handler = handlers.get(user.getState());
+            handler.handle(data, user, this);
+            return;
+        }
+
+        Message message = update.getMessage();
+        if (message == null || !message.hasText()) return;
+
+        String text = message.getText();
+        Long chatId = message.getChatId();
+
+        if (text.startsWith("/start")) {
+            sendStartMessage(chatId, text);
+            return;
+        }
+
+        if (userContexts.containsKey(chatId) && userContexts.get(chatId).getState() != UserState.DONE) {
+            sendMessage(chatId, "Пожалуйста выберите вариант из списка");
+            return;
+        }
+
         if (!userContexts.containsKey(chatId)) {
-        	sendMessage(chatId, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
-        	return;
+            sendMessage(chatId, "Ваша сессия истекла. Нажмите /start, чтобы начать заново");
+            return;
         }
+
         if (userContexts.get(chatId).getState() == UserState.DONE) {
-        	sendStartMessage(chatId, text);
+            sendStartMessage(chatId, text);
         }
-         if (!update.hasMessage() || !update.getMessage().hasText()) return;
-       
     }
+
     private void sendStartMessage(long chatId, String text) {
-    	 BookingContext user = new BookingContext(chatId);
-    	 userContexts.put(chatId, user);
-    	 UserResponseHandler handler = handlers.get(user.getState());
-    	 handler.handle(text, user, this);
+        BookingContext user = new BookingContext(chatId);
+        userContexts.put(chatId, user);
+        UserResponseHandler handler = handlers.get(user.getState());
+        handler.handle(text, user, this);
     }
+
     private void cleanOldContexts() {
         Instant now = Instant.now();
         for (Map.Entry<Long, Instant> entry : contextTimestamps.entrySet()) {
-            if (now.minusSeconds(600).isAfter(entry.getValue())) { // 10 минут
+            if (now.minusSeconds(600).isAfter(entry.getValue())) {
                 Long chatId = entry.getKey();
                 userContexts.remove(chatId);
                 contextTimestamps.remove(chatId);
@@ -96,11 +102,9 @@ public class UserBot extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
-
         if (keyboard != null) {
             message.setReplyMarkup(keyboard);
         }
-
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -113,12 +117,7 @@ public class UserBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public String getBotUsername() {
-        return botUsername;
-    }
-
+    public String getBotUsername() { return botUsername; }
     @Override
-    public String getBotToken() {
-        return botToken;
-    }
+    public String getBotToken() { return botToken; }
 }
